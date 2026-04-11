@@ -20,6 +20,7 @@ const runtimeAlarms = {
 let ipCache = null;
 let runtimeInitialization = null;
 let isInitialized = false;
+let tabLookupRequests = new Map();
 
 async function loadIPCache(getObjectFromSessionStorage) {
 	if (ipCache !== null) {
@@ -100,16 +101,79 @@ async function ensureServiceWorkerReady(deps) {
 	}
 }
 
-function restoreTabs(windows, df) {
+function createTabLookupKey(data) {
+	return `${data.tab}\n${data.url}`;
+}
+
+function shouldQueueFollowUpLookup(currentData, incomingData) {
+	const currentIP = typeof currentData.ip === "string" && currentData.ip !== "" ? currentData.ip : null;
+	const incomingIP = typeof incomingData.ip === "string" && incomingData.ip !== "" ? incomingData.ip : null;
+
+	return incomingIP !== null && currentIP !== incomingIP;
+}
+
+function queueCountryLookup(data, deps) {
+	if (
+		typeof data !== "object" ||
+		data === null ||
+		typeof data.tab !== "number" ||
+		data.tab <= 0 ||
+		typeof data.url !== "string" ||
+		data.url === ""
+	) {
+		return Promise.resolve();
+	}
+
+	const requestKey = createTabLookupKey(data);
+	const existingRequest = tabLookupRequests.get(requestKey);
+	if (typeof existingRequest !== "undefined") {
+		if (shouldQueueFollowUpLookup(existingRequest.activeData, data)) {
+			existingRequest.pendingData = data;
+		}
+		return existingRequest.promise;
+	}
+
+	const requestState = {
+		activeData: data,
+		pendingData: null,
+		promise: null,
+	};
+
+	const runLookup = async function(lookupData) {
+		requestState.activeData = lookupData;
+		await deps.df.countryLookup(lookupData);
+
+		if (
+			requestState.pendingData !== null &&
+			shouldQueueFollowUpLookup(lookupData, requestState.pendingData)
+		) {
+			const nextLookup = requestState.pendingData;
+			requestState.pendingData = null;
+			return runLookup(nextLookup);
+		}
+
+		requestState.pendingData = null;
+	};
+
+	requestState.promise = runLookup(data).finally(function() {
+		if (tabLookupRequests.get(requestKey) === requestState) {
+			tabLookupRequests.delete(requestKey);
+		}
+	});
+	tabLookupRequests.set(requestKey, requestState);
+	return requestState.promise;
+}
+
+function restoreTabs(windows, deps) {
 	for (let windowIndex = 0; windowIndex < windows.length; windowIndex++) {
 		for (let tabIndex = 0; tabIndex < windows[windowIndex].tabs.length; tabIndex++) {
 			const currentTab = windows[windowIndex].tabs[tabIndex];
 			if (typeof currentTab.url === "string" && currentTab.url !== "") {
-				df.countryLookup({ tab: currentTab.id, url: currentTab.url });
+				void queueCountryLookup({ tab: currentTab.id, url: currentTab.url }, deps);
 			}
 		}
 	}
-	df.processLastError();
+	deps.df.processLastError();
 }
 
 async function restoreAllTabs(deps) {
@@ -121,7 +185,7 @@ async function restoreAllTabs(deps) {
 				return;
 			}
 
-			restoreTabs(windows, deps.df);
+			restoreTabs(windows, deps);
 			resolve();
 		});
 	});
@@ -153,13 +217,13 @@ function registerListeners(deps) {
 		) {
 			const data = { tab: tabId, url: tab.url };
 			const domain = deps.df.parseUrl(tab.url);
-			const cachedIP = await getCachedIP(domain, deps.getObjectFromSessionStorage);
-			if (typeof cachedIP !== "undefined") {
-				data.ip = cachedIP;
+				const cachedIP = await getCachedIP(domain, deps.getObjectFromSessionStorage);
+				if (typeof cachedIP !== "undefined") {
+					data.ip = cachedIP;
+				}
+				void queueCountryLookup(data, deps);
 			}
-			deps.df.countryLookup(data);
-		}
-	});
+		});
 
 	deps.chrome.runtime.onMessage.addListener(function(message, sender, senderResponse) {
 		switch (message.type) {
@@ -203,7 +267,7 @@ function registerListeners(deps) {
 			deps.saveObjectInSessionStorage
 		);
 
-		deps.df.countryLookup({ tab: ret.tabId, url: ret.url, ip: ret.ip });
+		void queueCountryLookup({ tab: ret.tabId, url: ret.url, ip: ret.ip }, deps);
 		deps.df.processLastError();
 	}, {
 		urls: ["<all_urls>"],
@@ -233,4 +297,5 @@ export function resetBackgroundStateForTests() {
 	ipCache = null;
 	runtimeInitialization = null;
 	isInitialized = false;
+	tabLookupRequests = new Map();
 }

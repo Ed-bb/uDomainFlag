@@ -45,6 +45,7 @@ async function createHarness({
 	existingAlarms = {},
 	sessionStorage = {},
 	windows = [],
+	countryLookupImplementation,
 } = {}) {
 	const alarmState = { ...existingAlarms };
 	const listeners = {};
@@ -177,6 +178,9 @@ async function createHarness({
 		},
 		countryLookup(payload) {
 			calls.countryLookup.push(payload);
+			if (typeof countryLookupImplementation === "function") {
+				return countryLookupImplementation(payload);
+			}
 		},
 		processLastError() {
 			calls.processLastError += 1;
@@ -203,6 +207,16 @@ async function createHarness({
 			await flushPromises();
 		},
 	};
+}
+
+function createDeferred() {
+	let resolve;
+	let reject;
+	const promise = new Promise((resolvePromise, rejectPromise) => {
+		resolve = resolvePromise;
+		reject = rejectPromise;
+	});
+	return { promise, resolve, reject };
 }
 
 test("service worker evaluation is idempotent and does not restore tabs immediately", async function() {
@@ -293,4 +307,66 @@ test("popup requests read the cached IP from session storage after a worker rest
 
 	assert.equal(keepChannelOpen, true);
 	assert.equal(responseValue, "203.0.113.10");
+});
+
+test("parallel tab updates for the same tab and url share one active country lookup", async function() {
+	const firstLookup = createDeferred();
+	const harness = await createHarness({
+		countryLookupImplementation() {
+			return firstLookup.promise;
+		},
+	});
+
+	await harness.flush();
+	const loadingListener = harness.listeners.onUpdated;
+
+	void loadingListener(7, { status: "loading" }, { id: 7, url: "https://example.com/" });
+	void loadingListener(7, { status: "loading" }, { id: 7, url: "https://example.com/" });
+	await harness.flush();
+
+	assert.equal(harness.calls.countryLookup.length, 1);
+
+	firstLookup.resolve();
+	await harness.flush();
+
+	assert.equal(harness.calls.countryLookup.length, 1);
+});
+
+test("response-started queues one follow-up lookup with ip for an active tab lookup", async function() {
+	const firstLookup = createDeferred();
+	const harness = await createHarness({
+		countryLookupImplementation(payload) {
+			if (payload.ip === "203.0.113.10") {
+				return Promise.resolve();
+			}
+			return firstLookup.promise;
+		},
+	});
+
+	await harness.flush();
+
+	void harness.listeners.onUpdated(7, { status: "loading" }, { id: 7, url: "https://example.com/" });
+	await harness.flush();
+	assert.equal(harness.calls.countryLookup.length, 1);
+
+	harness.listeners.onResponseStarted({
+		tabId: 7,
+		url: "https://example.com/",
+		ip: "203.0.113.10",
+	});
+	await harness.flush();
+
+	assert.equal(harness.calls.countryLookup.length, 1);
+
+	firstLookup.resolve();
+	await harness.flush();
+
+	assert.equal(harness.calls.countryLookup.length, 2);
+	assert.equal(
+		JSON.stringify(harness.calls.countryLookup),
+		JSON.stringify([
+			{ tab: 7, url: "https://example.com/" },
+			{ tab: 7, url: "https://example.com/", ip: "203.0.113.10" },
+		])
+	);
 });

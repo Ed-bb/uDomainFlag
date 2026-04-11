@@ -53,6 +53,7 @@ async function createHarness({
 	sessionStorage = {},
 	syncStorage = {},
 	localStorage = {},
+	fetchImplementation,
 } = {}) {
 	let tabCallIndex = 0;
 	const fetchCalls = [];
@@ -147,8 +148,11 @@ async function createHarness({
 	globalThis.createImageBitmap = async function() {
 		return { width: 16, height: 16 };
 	};
-	globalThis.fetch = async function(url) {
+	globalThis.fetch = async function(url, options) {
 		fetchCalls.push(url);
+		if (typeof fetchImplementation === "function") {
+			return fetchImplementation(url, options);
+		}
 		return {
 			async blob() {
 				return new Blob([""]);
@@ -180,6 +184,31 @@ async function createHarness({
 			return parametersModule.api_domain;
 		},
 	};
+}
+
+function createDeferred() {
+	let resolve;
+	let reject;
+	const promise = new Promise((resolvePromise, rejectPromise) => {
+		resolve = resolvePromise;
+		reject = rejectPromise;
+	});
+	return { promise, resolve, reject };
+}
+
+function countCountryFetches(fetchCalls) {
+	return fetchCalls.filter((url) => String(url).includes("/country/example.com")).length;
+}
+
+async function waitFor(assertion, attempts = 25) {
+	for (let attempt = 0; attempt < attempts; attempt++) {
+		if (assertion()) {
+			return;
+		}
+		await new Promise((resolve) => setImmediate(resolve));
+	}
+
+	throw new Error("condition not met in time");
 }
 
 test("isTabStillCurrent returns true for the expected URL", async function() {
@@ -298,4 +327,106 @@ test("handleFallback keeps the managed server when upstream fallback is disabled
 	assert.equal(result, "internal.example");
 	assert.equal(harness.getSessionValue("Server"), "internal.example");
 	assert.equal(harness.getActiveDomain(), "internal.example");
+});
+
+test("countryLookup deduplicates concurrent backend requests for the same domain and ip", async function() {
+	const deferredResponse = createDeferred();
+	const harness = await createHarness({
+		tabUrls: Array(8).fill("https://example.com/"),
+		fetchImplementation(url) {
+			if (url === "https://dfdata.bella.network/country/example.com") {
+				return deferredResponse.promise;
+			}
+
+			return Promise.resolve({
+				async blob() {
+					return new Blob([""]);
+				},
+				async json() {
+					return { success: true };
+				},
+				async text() {
+					return "";
+				},
+			});
+		},
+	});
+
+	const firstLookup = harness.df.countryLookup({
+		tab: 7,
+		url: "https://example.com/",
+		ip: "8.8.8.8",
+	});
+	const secondLookup = harness.df.countryLookup({
+		tab: 8,
+		url: "https://example.com/",
+		ip: "8.8.8.8",
+	});
+
+	await waitFor(() => countCountryFetches(harness.fetchCalls) === 1);
+	assert.equal(countCountryFetches(harness.fetchCalls), 1, JSON.stringify(harness.fetchCalls));
+
+	deferredResponse.resolve({
+		async blob() {
+			return new Blob([""]);
+		},
+		async json() {
+			return { success: true, shortcountry: "DE" };
+		},
+		async text() {
+			return "";
+		},
+	});
+
+	await Promise.all([firstLookup, secondLookup]);
+
+	assert.equal(countCountryFetches(harness.fetchCalls), 1, JSON.stringify(harness.fetchCalls));
+	assert.equal(harness.actionCalls.setIcon.length, 2);
+});
+
+test("countryLookup reuses a fresh cached backend result for the same domain and ip", async function() {
+	const harness = await createHarness({
+		tabUrls: Array(8).fill("https://example.com/"),
+		fetchImplementation(url) {
+			if (url === "https://dfdata.bella.network/country/example.com") {
+				return Promise.resolve({
+					async blob() {
+						return new Blob([""]);
+					},
+					async json() {
+						return { success: true, shortcountry: "DE" };
+					},
+					async text() {
+						return "";
+					},
+				});
+			}
+
+			return Promise.resolve({
+				async blob() {
+					return new Blob([""]);
+				},
+				async json() {
+					return { success: true };
+				},
+				async text() {
+					return "";
+				},
+			});
+		},
+	});
+
+	await harness.df.countryLookup({
+		tab: 7,
+		url: "https://example.com/",
+		ip: "8.8.8.8",
+	});
+	await harness.df.countryLookup({
+		tab: 8,
+		url: "https://example.com/",
+		ip: "8.8.8.8",
+	});
+
+	assert.equal(countCountryFetches(harness.fetchCalls), 1, JSON.stringify(harness.fetchCalls));
+	assert.equal(harness.actionCalls.setIcon.length, 2);
 });

@@ -22,6 +22,10 @@ import {
 } from "./parameters.js";
 
 let storageCache = {};
+const countryLookupCacheTTL = 15 * 1000;
+const countryLookupCacheMaxEntries = 100;
+let countryLookupCache = new Map();
+let inflightCountryLookups = new Map();
 
 function getChrome() {
 	return globalThis.chrome;
@@ -64,6 +68,100 @@ function normalizeLookupResponse(response) {
 	}
 
 	return response;
+}
+
+function createCountryLookupKey(domain, ip) {
+	const normalizedIP = typeof ip === "string" && ip !== "" ? ip : "";
+	return `${domain}\n${normalizedIP}`;
+}
+
+function pruneCountryLookupCache(now = Date.now()) {
+	for (const [key, entry] of countryLookupCache.entries()) {
+		if (entry.expiresAt <= now) {
+			countryLookupCache.delete(key);
+		}
+	}
+
+	while (countryLookupCache.size > countryLookupCacheMaxEntries) {
+		const oldestKey = countryLookupCache.keys().next().value;
+		if (typeof oldestKey === "undefined") {
+			break;
+		}
+		countryLookupCache.delete(oldestKey);
+	}
+}
+
+function getCachedCountryLookup(key) {
+	const entry = countryLookupCache.get(key);
+	if (typeof entry === "undefined") {
+		return null;
+	}
+
+	if (entry.expiresAt <= Date.now()) {
+		countryLookupCache.delete(key);
+		return null;
+	}
+
+	return entry.value;
+}
+
+function cacheCountryLookupResult(key, response) {
+	if (!response?.success) {
+		return;
+	}
+
+	pruneCountryLookupCache();
+	countryLookupCache.set(key, {
+		expiresAt: Date.now() + countryLookupCacheTTL,
+		value: response,
+	});
+	pruneCountryLookupCache();
+}
+
+async function getCountryLookupResponse(domain, data) {
+	const requestKey = createCountryLookupKey(domain, data.ip);
+	const cachedResponse = getCachedCountryLookup(requestKey);
+	if (cachedResponse !== null) {
+		return cachedResponse;
+	}
+
+	if (inflightCountryLookups.has(requestKey)) {
+		return inflightCountryLookups.get(requestKey);
+	}
+
+	const requestPromise = (async function() {
+		try {
+			await df.checkUUID();
+			const headers = await buildRequestHeaders(data);
+			const parsedData = normalizeLookupResponse(await fetchJson(
+				`${api_protocol}://${await df.getAPIDomain()}${api_path}/country/${domain}`,
+				{
+					method: "GET",
+					cache: "default",
+					headers,
+				}
+			));
+
+			cacheCountryLookupResult(requestKey, parsedData);
+			return parsedData;
+		}
+		catch (error) {
+			console.warn(error);
+			await df.handleFallback();
+			return {
+				success: false,
+				error: "uDomainFlag server not reachable",
+				offline: true,
+				catch: error,
+			};
+		}
+		finally {
+			inflightCountryLookups.delete(requestKey);
+		}
+	})();
+
+	inflightCountryLookups.set(requestKey, requestPromise);
+	return requestPromise;
 }
 
 export const df = {
@@ -143,60 +241,18 @@ export const df = {
 			}
 		}
 
-		await df.checkUUID();
-
-		try {
-			const headers = await buildRequestHeaders(data);
-			const parsedData = await fetchJson(
-				`${api_protocol}://${await df.getAPIDomain()}${api_path}/country/${domain}`,
-				{
-					method: "GET",
-					cache: "default",
-					headers,
-				}
-			);
-
-			if (parsedData.success) {
-				const meta = { lookup: data, request: parsedData };
-				if (data.ip != null) {
-					meta.ip = data.ip;
-				}
-
-				await df.domainCountryLookupResultData(meta);
-				return;
+		const parsedData = await getCountryLookupResponse(domain, data);
+		if (parsedData.success) {
+			const meta = { lookup: data, request: parsedData };
+			if (data.ip != null) {
+				meta.ip = data.ip;
 			}
 
-			if (parsedData.success === false) {
-				let error = "uDomainFlag server was not able to resolve the country of the domain.\nPlease try again later.";
-				if (
-					typeof parsedData.error !== "undefined" &&
-					parsedData.error !== "" &&
-					parsedData.error !== "doh: all query failed"
-				) {
-					error = parsedData.error;
-				}
-
-				await df.setFlag({
-					tab: data.tab,
-					url: data.url,
-					icon: "images/special-flag/unknown.png",
-					title: error,
-					popup: "special.html",
-				});
-				return;
-			}
-
-			await df.setFlag({
-				tab: data.tab,
-				url: data.url,
-				icon: "images/fugue/network-status-busy.png",
-				title: "uDomainFlag server not reachable",
-				popup: "offline.html",
-			});
-			await df.handleFallback();
+			await df.domainCountryLookupResultData(meta);
+			return;
 		}
-		catch (error) {
-			console.warn(error);
+
+		if (parsedData.offline === true) {
 			await df.setFlag({
 				tab: data.tab,
 				url: data.url,
@@ -204,7 +260,26 @@ export const df = {
 				title: "uDomainFlag server not reachable",
 				popup: "offline.html",
 			});
-			await df.handleFallback();
+			return;
+		}
+
+		if (parsedData.success === false) {
+			let error = "uDomainFlag server was not able to resolve the country of the domain.\nPlease try again later.";
+			if (
+				typeof parsedData.error !== "undefined" &&
+				parsedData.error !== "" &&
+				parsedData.error !== "doh: all query failed"
+			) {
+				error = parsedData.error;
+			}
+
+			await df.setFlag({
+				tab: data.tab,
+				url: data.url,
+				icon: "images/special-flag/unknown.png",
+				title: error,
+				popup: "special.html",
+			});
 		}
 	},
 
@@ -834,4 +909,6 @@ export function _(variable, object) {
 
 export function resetDomainflagStateForTests() {
 	storageCache = {};
+	countryLookupCache = new Map();
+	inflightCountryLookups = new Map();
 }
