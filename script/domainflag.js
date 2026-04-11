@@ -16,6 +16,38 @@ const df = {
 		}
 	},
 
+	isTabStillCurrent: async function(tabId, expectedUrl) {
+		if (typeof expectedUrl === "undefined" || expectedUrl === null || expectedUrl === "") {
+			return true;
+		}
+
+		try {
+			let tab = await new Promise((resolve) => {
+				chrome.tabs.get(tabId, function(tabData) {
+					if (chrome.runtime.lastError) {
+						resolve(null);
+						return;
+					}
+					resolve(tabData);
+				});
+			});
+
+			if (tab === null || typeof tab.url !== "string") {
+				return false;
+			}
+
+			return tab.url === expectedUrl;
+		}
+		catch (e) {
+			Sentry.withScope(function (scope) {
+				scope.setExtra("tabId", tabId);
+				scope.setExtra("expectedUrl", expectedUrl);
+				Sentry.captureException(e);
+			});
+			return false;
+		}
+	},
+
 	countryLookup: async function(data){
 		// Check if local domain or local ip is requested
 		let special = df.isSpecial(data.url);
@@ -31,7 +63,7 @@ const df = {
 
 		// If something is wrong with the domain, display a question symbol
 		if (domain === false || domain === "" || domain === "false") {
-			return df.setFlag({ tab: data.tab, icon: "images/fugue/question-white.png", title: "No data found", popup: 'special.html' });
+			return df.setFlag({ tab: data.tab, url: data.url, icon: "images/fugue/question-white.png", title: "No data found", popup: 'special.html' });
 		}
 
 		// Set data.ip to null if data is not available
@@ -50,6 +82,9 @@ const df = {
 				return df.setFlag(df.deepExtend({}, special, data));
 			}
 		}
+
+		// check if UUID is set, if not generate one and set it to sync storage
+		df.checkUUID();
 
 		// create header for request
 		let headers = {
@@ -96,9 +131,9 @@ const df = {
 				if (typeof parsedData.error !== "undefined" && parsedData.error !== "" && parsedData.error != "doh: all query failed") {
 					error = parsedData.error;
 				}
-				df.setFlag({ tab: data.tab, icon: "images/special-flag/unknown.png", title: error, popup: 'special.html' });
+				df.setFlag({ tab: data.tab, url: data.url, icon: "images/special-flag/unknown.png", title: error, popup: 'special.html' });
 			} else {
-				df.setFlag({ tab: data.tab, icon: "images/fugue/network-status-busy.png", title: "uDomainFlag server not reachable", popup: 'offline.html' });
+				df.setFlag({ tab: data.tab, url: data.url, icon: "images/fugue/network-status-busy.png", title: "uDomainFlag server not reachable", popup: 'offline.html' });
 				Sentry.withScope(function (scope) {
 					scope.setExtra("domain", domain);
 					scope.setExtra("response", response);
@@ -109,7 +144,7 @@ const df = {
 			}
 		}).catch((result) => {
 			console.log(result);
-			df.setFlag({ tab: data.tab, icon: "images/fugue/network-status-busy.png", title: "uDomainFlag server not reachable", popup: 'offline.html' });
+			df.setFlag({ tab: data.tab, url: data.url, icon: "images/fugue/network-status-busy.png", title: "uDomainFlag server not reachable", popup: 'offline.html' });
 			api_domain = df.handleFallback();
 			console.warn(api_domain);
 		});
@@ -151,6 +186,7 @@ const df = {
 
 			return df.setFlag({
 				tab: data.lookup.tab,
+				url: data.lookup.url,
 				icon: "images/fugue/question-white.png",
 				title: title,
 				popup: 'special.html'
@@ -181,6 +217,7 @@ const df = {
 		// Everything looked up, set correct flag
 		df.setFlag({
 			tab: data.lookup.tab,
+			url: data.lookup.url,
 			icon: flagIcon,
 			title: title,
 			popup: popup
@@ -262,6 +299,11 @@ const df = {
 				return;
 			}
 
+			// Abort stale updates from older navigations for the same tab.
+			if (!(await df.isTabStillCurrent(data.tab, data.url))) {
+				return;
+			}
+
 			// load icon first because icon is reset on every page navigation
 			var icon;
 			if (typeof data.icon !== "undefined" && data.icon !== "") {
@@ -288,6 +330,12 @@ const df = {
 			var ctx = canvas.getContext("2d");
 			ctx.clearRect(0, 0, 16, 16);
 			ctx.drawImage(icon, Math.floor((16 - icon.width) / 3), Math.floor((16 - icon.height) / 2));
+
+			// Re-check because the tab can navigate while the icon is being prepared.
+			if (!(await df.isTabStillCurrent(data.tab, data.url))) {
+				return;
+			}
+
 			chrome.action.setIcon({ tabId: data.tab, imageData: ctx.getImageData(0, 0, 16, 16) });
 
 			// set popup data before changing other data
