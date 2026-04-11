@@ -1,140 +1,114 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-"use strict";
 
-/**
- * Retrieve object from Chrome's Local StorageArea
- * @param {string} key
- */
-const getObjectFromLocalStorage = async function (key) {
+function getChrome() {
+	return globalThis.chrome;
+}
+
+function getBrowser() {
+	return globalThis.browser;
+}
+
+function normalizeKeys(key) {
+	return Array.isArray(key) ? key : [key];
+}
+
+function unwrapStoredValue(value, key) {
+	if (Array.isArray(key)) {
+		return value;
+	}
+
+	if (typeof value !== "object" || value === null) {
+		return undefined;
+	}
+
+	return value[key];
+}
+
+function withCallback(operation) {
 	return new Promise((resolve, reject) => {
 		try {
-			if (typeof key === "string") {
-				key = [key];
+			operation(resolve, reject);
+		}
+		catch (error) {
+			reject(error);
+		}
+	});
+}
+
+async function getFromStorageArea(areaName, key) {
+	const chrome = getChrome();
+	const keys = normalizeKeys(key);
+
+	return withCallback((resolve, reject) => {
+		chrome.storage[areaName].get(keys, function(value) {
+			if (chrome.runtime?.lastError) {
+				reject(chrome.runtime.lastError);
+				return;
 			}
-			chrome.storage.local.get(key, function (value) {
-				resolve(value[key]);
-			});
-		} catch (ex) {
-			reject(ex);
-		}
-	});
-};
 
-/**
- * Save Object in Chrome's Local StorageArea
- * @param {*} obj
- */
-const saveObjectInLocalStorage = async function (obj) {
-	return new Promise((resolve, reject) => {
-		try {
-			chrome.storage.local.set(obj, function () {
-				resolve();
-			});
-		} catch (ex) {
-			reject(ex);
-		}
-	});
-};
-
-/**
- * Retrieve object from Chrome's Sync StorageArea
- * @param {string} key
- */
-const getObjectFromSyncStorage = async function (key) {
-	return new Promise((resolve, reject) => {
-		try {
-			if (typeof key === "string") {
-				key = [key];
-			}
-			chrome.storage.sync.get(key, function (value) {
-				resolve(value[key]);
-			});
-		} catch (ex) {
-			reject(ex);
-		}
-	});
-};
-
-/**
- * Save Object in Chrome's Sync StorageArea
- * @param {*} obj
- */
-const saveObjectInSyncStorage = async function (obj) {
-	return new Promise((resolve, reject) => {
-		try {
-			chrome.storage.sync.set(obj, function () {
-				resolve();
-			});
-		} catch (ex) {
-			reject(ex);
-		}
-	});
-};
-
-/**
- * Retrieve object from Chrome's Session StorageArea
- * @param {string} key
- */
-const getObjectFromSessionStorage = async function (key) {
-	return new Promise((resolve, reject) => {
-		try {
-			if (typeof key === "string") {
-				key = [key];
-			}
-			chrome.storage.session.get(key, function (value) {
-				resolve(value[key]);
-			});
-		} catch (ex) {
-			reject(ex);
-		}
-	});
-};
-
-/**
- * Save Object in Chrome's Session StorageArea
- * @param {*} obj
- */
-const saveObjectInSessionStorage = async function (obj) {
-	return new Promise((resolve, reject) => {
-		try {
-			chrome.storage.session.set(obj, function () {
-				resolve();
-			});
-		} catch (ex) {
-			reject(ex);
-		}
-	});
-};
-
-/**
- * Retrieve object from Chrome's Managed StorageArea
- * @param {string} key
- */
-const getObjectFromManagedStorage = async function (key) {
-	return new Promise((resolve, reject) => {
-		// detect if key is an array
-		if (typeof key === "string") {
-			key = [key];
-		}
-
-		// On Firefox, managed storage must be accessed through the storage.managed API
-		if (typeof browser !== "undefined") {
-			browser.storage.managed.get(key).then((value) => {
-				resolve(value[key]);
-			}).catch((ex) => {
-				resolve(undefined);
-			});
-		}
-
-		chrome.storage.managed.get(key, function (value) {
-			if (chrome.runtime.lastError) {
-				resolve(undefined);
-			}
-			if (typeof value === "object") {
-				resolve(value[key]);
-			}
+			resolve(unwrapStoredValue(value, key));
 		});
 	});
-};
+}
+
+async function saveToStorageArea(areaName, value) {
+	const chrome = getChrome();
+
+	return withCallback((resolve, reject) => {
+		chrome.storage[areaName].set(value, function() {
+			if (chrome.runtime?.lastError) {
+				reject(chrome.runtime.lastError);
+				return;
+			}
+
+			resolve();
+		});
+	});
+}
+
+export async function getObjectFromLocalStorage(key) {
+	return getFromStorageArea("local", key);
+}
+
+export async function saveObjectInLocalStorage(value) {
+	return saveToStorageArea("local", value);
+}
+
+export async function getObjectFromSyncStorage(key) {
+	return getFromStorageArea("sync", key);
+}
+
+export async function saveObjectInSyncStorage(value) {
+	return saveToStorageArea("sync", value);
+}
+
+export async function getObjectFromSessionStorage(key) {
+	return getFromStorageArea("session", key);
+}
+
+export async function saveObjectInSessionStorage(value) {
+	return saveToStorageArea("session", value);
+}
+
+export async function getObjectFromManagedStorage(key) {
+	const browser = getBrowser();
+
+	if (typeof browser !== "undefined" && browser?.storage?.managed?.get) {
+		try {
+			const value = await browser.storage.managed.get(normalizeKeys(key));
+			return unwrapStoredValue(value, key);
+		}
+		catch (error) {
+			return undefined;
+		}
+	}
+
+	try {
+		return await getFromStorageArea("managed", key);
+	}
+	catch (error) {
+		return undefined;
+	}
+}

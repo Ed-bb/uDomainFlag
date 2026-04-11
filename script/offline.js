@@ -1,17 +1,23 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-"use strict";
 
-window.addEventListener('load', function () {
-	writeContent();
-});
+import { df, _ } from "./domainflag.js";
+import { applyTranslations } from "./lang.js";
+import { api_domain_primary, parametersReady } from "./parameters.js";
 
-async function writeContent(){
-	let currentDomain = await getAPIDomain();
-	if (currentDomain != api_domain_primary) {
-		document.querySelector('.companymanaged').style.display = "inline";
+async function initializeOfflinePage() {
+	applyTranslations();
+	await parametersReady;
+
+	const currentDomain = await df.getAPIDomain();
+	if (currentDomain !== api_domain_primary) {
+		document.querySelector(".companymanaged").style.display = "inline";
 	}
-	// innerHTML is needed to render <br> as line breaks
-	document.querySelector('.offline_description').innerHTML = _("offline_description", [currentDomain]);
+
+	document.querySelector(".offline_description").innerHTML = _("offline_description", [currentDomain]);
 }
+
+window.addEventListener("load", function() {
+	void initializeOfflinePage();
+});

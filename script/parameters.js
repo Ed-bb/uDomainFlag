@@ -1,72 +1,103 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-"use strict";
 
-// companyManaged is set to true if company is set in managed storage
-let companyManaged = false;
+import {
+	getObjectFromManagedStorage,
+	getObjectFromSyncStorage,
+} from "./storage.js";
 
-// this is the main access address for the browser extension to the API backend
-// if the primary domain can't be reached, fall back to the fallback domain
-const api_protocol = "https";
-const api_domain_primary = "dfdata.bella.network";
-const api_domain_fallback = api_domain_primary;
-let api_domain = api_domain_primary;
-const api_path = "";
+const chrome = globalThis.chrome;
 
-// link to more information page to show additional data
-const lookup_domain = "domainflag.bella.network";
-const lookup_protocol = "https";
+export let companyManaged = false;
 
-// Target where sentry pushes error records to
-const sentry_target = "https://536650d775194abb959ebeb9f9e744e2@sentry.bella.pm/12";
+export const api_protocol = "https";
+export const api_domain_primary = "dfdata.bella.network";
+export const api_domain_fallback = api_domain_primary;
+export let api_domain = api_domain_primary;
+export const api_path = "";
 
-// initialize sentry if CrashReports isn't disabled by user or GPO
-Sentry.init({
-	dsn: sentry_target,
-	environment: "production",
-	release: chrome.runtime.getManifest().version,
-	autoSessionTracking: false,
+export const lookup_domain = "domainflag.bella.network";
+export const lookup_protocol = "https";
 
-	// pre check if crash reports are disabled by user or GPO
-	beforeSend(event, hint) {
-		if (!Sentry.getCurrentHub().getClient().getOptions().enabled) {
-			return null;
-		}
-		return event;
+export const sentry_target = "https://536650d775194abb959ebeb9f9e744e2@sentry.bella.pm/12";
+
+function getSentry() {
+	return globalThis.Sentry;
+}
+
+function isEnabledFlag(value) {
+	return value === true || value === "true";
+}
+
+function setSentryEnabled(enabled) {
+	const Sentry = getSentry();
+	if (!Sentry?.getCurrentHub) {
+		return;
 	}
-});
 
-getObjectFromManagedStorage(["DisableCrashReports"]).then(function (value) {
-	if (typeof value !== "undefined") {
-		console.log(value);
-		if (value == "true" || value === true) {
-			Sentry.getCurrentHub().getClient().getOptions().enabled = false;
-			Sentry.init({
-				enabled: false
-			});
-			return;
-		}
+	const client = Sentry.getCurrentHub().getClient();
+	if (!client?.getOptions) {
+		return;
 	}
-	// get option from sync storage
-	getObjectFromSyncStorage(["DisableCrashReports"]).then(function (value) {
-		if (typeof value !== "undefined") {
-			console.log(value);
-			if (value == "true" || value === true) {
-				Sentry.getCurrentHub().getClient().getOptions().enabled = false;
-				Sentry.init({
-					enabled: false
-				});
-				return;
+
+	client.getOptions().enabled = enabled;
+	Sentry.init({ enabled });
+}
+
+function initializeSentry() {
+	const Sentry = getSentry();
+	if (!Sentry?.init) {
+		return;
+	}
+
+	Sentry.init({
+		dsn: sentry_target,
+		environment: "production",
+		release: chrome.runtime.getManifest().version,
+		autoSessionTracking: false,
+		beforeSend(event) {
+			const currentSentry = getSentry();
+			const client = currentSentry?.getCurrentHub?.().getClient?.();
+			if (client?.getOptions && !client.getOptions().enabled) {
+				return null;
 			}
-		}
+			return event;
+		},
 	});
-});
+}
 
+export function setAPIDomain(domain) {
+	api_domain = typeof domain === "string" && domain !== "" ? domain : api_domain_primary;
+	return api_domain;
+}
 
-// determine if Server is set in managed storage and overwirte api_domain if set
-getObjectFromManagedStorage(["Server"]).then(function (value) {
-	if (typeof value !== "undefined") {
-		api_domain = value;
+export async function initializeParameters() {
+	initializeSentry();
+
+	const managedCrashReports = await getObjectFromManagedStorage("DisableCrashReports");
+	if (isEnabledFlag(managedCrashReports)) {
+		setSentryEnabled(false);
 	}
-});
+	else {
+		const syncedCrashReports = await getObjectFromSyncStorage("DisableCrashReports");
+		if (isEnabledFlag(syncedCrashReports)) {
+			setSentryEnabled(false);
+		}
+	}
+
+	const managedServer = await getObjectFromManagedStorage("Server");
+	if (typeof managedServer !== "undefined" && managedServer !== null && managedServer !== "") {
+		companyManaged = true;
+		setAPIDomain(managedServer);
+	}
+
+	return api_domain;
+}
+
+export function resetParametersForTests() {
+	companyManaged = false;
+	api_domain = api_domain_primary;
+}
+
+export const parametersReady = initializeParameters();

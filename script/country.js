@@ -1,9 +1,8 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-"use strict";
 
-const isoCountries = {
+export const isoCountries = {
 	'AF': 'Afghanistan',
 	'AX': 'Aland Islands',
 	'AL': 'Albania',
@@ -251,7 +250,7 @@ const isoCountries = {
 	'ZW': 'Zimbabwe'
 };
 
-function getCountryName(countryCode) {
+export function getCountryName(countryCode) {
 	if (isoCountries.hasOwnProperty(countryCode)) {
 		return isoCountries[countryCode];
 	} else {

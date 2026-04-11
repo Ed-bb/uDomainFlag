@@ -11,7 +11,8 @@
 	"version": "2.3.0",
 
 	"background": {
-		"service_worker": "background.js"
+		"service_worker": "background.chromium.js",
+		"type": "module"
 	},
 
 	"icons": {

@@ -1,35 +1,45 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-"use strict";
 
-const getCurrentTab = function (callback) {
-	chrome.tabs.query({
-		windowId: chrome.windows.WINDOW_ID_CURRENT,
-		active: true
-	}, function (tabs) {
-		callback(tabs[0]);
+import { _ } from "./domainflag.js";
+
+const chrome = globalThis.chrome;
+
+async function getCurrentTab() {
+	return new Promise((resolve) => {
+		chrome.tabs.query({
+			windowId: chrome.windows.WINDOW_ID_CURRENT,
+			active: true,
+		}, function(tabs) {
+			resolve(tabs[0] ?? null);
+		});
 	});
-};
+}
 
-getCurrentTab(function (data) {
-	// get current URL which may contain additional data, e.g. popup.html#ip=185.128.246.155&a=b
-	let url = new URL(window.location.href);
-	let metadata = {};
-	url = url.hash.replace("#", "");
-	url.split("&").forEach(function (item) {
-		metadata[item.split("=")[0]] = item.split("=")[1]
-	});
-
-	document.querySelector('.ip').classList.remove("loader");
-	document.querySelector('.name').classList.remove("loader");
-	document.querySelector('.name').textContent = _("internal_domain");
-
-	if (metadata.ip !== null) {
-		document.querySelector('.ip').textContent = metadata.ip;
-	} else {
-		document.querySelector('.ip').textContent = _("unknown");
+function getMetadataFromHash() {
+	const metadata = {};
+	const hashValue = new URL(window.location.href).hash.replace("#", "");
+	if (hashValue === "") {
+		return metadata;
 	}
 
-	// if company
-});
+	hashValue.split("&").forEach(function(item) {
+		const [key, value] = item.split("=");
+		metadata[key] = value;
+	});
+	return metadata;
+}
+
+async function initializeInternalPage() {
+	await getCurrentTab();
+
+	const metadata = getMetadataFromHash();
+	document.querySelector(".ip").classList.remove("loader");
+	document.querySelector(".name").classList.remove("loader");
+	document.querySelector(".name").textContent = _("internal_domain");
+	document.querySelector(".ip").textContent =
+		typeof metadata.ip === "string" && metadata.ip !== "" ? metadata.ip : _("unknown");
+}
+
+void initializeInternalPage();

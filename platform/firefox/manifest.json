@@ -11,7 +11,7 @@
 	"version": "2.3.0",
 
 	"background": {
-		"scripts": ["script/sentry.min.js", "script/storage.js", "script/country.js", "script/parameters.js", "script/domainflag.js", "background.js"]
+		"scripts": ["script/sentry.min.js", "background.js"]
 	},
 
 	"icons": {
