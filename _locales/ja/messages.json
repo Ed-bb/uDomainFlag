@@ -1,0 +1,156 @@
+{
+    "browser_extension": {
+        "message": "ブラウザー拡張機能"
+    },
+    "browser_ressource": {
+        "message": "ブラウザーリソース"
+    },
+    "description": {
+        "message": "Web サイトを閲覧中に、ドメイン情報をブラウザーで直接確認できます。"
+    },
+    "desc": {
+        "message": "説明"
+    },
+    "domain_unknown": {
+        "message": "要求されたページのデータが見つかりませんでした。ローカルドメインまたは無効なドメインである可能性があります。"
+    },
+    "hostname": {
+        "message": "ホスト名"
+    },
+    "internal_domain": {
+        "message": "内部ドメイン"
+    },
+    "local_ressource": {
+        "message": "要求されたドキュメントはローカルコンピューターから取得されました。"
+    },
+    "more_info": {
+        "message": "追加情報"
+    },
+    "multi_domain": {
+        "message": "このドメインは複数の IP アドレスを指しています。"
+    },
+    "name": {
+        "message": "名前"
+    },
+    "privacy": {
+        "message": "プライバシー"
+    },
+    "unknown": {
+        "message": "不明"
+    },
+    "options_companymanaged_title": {
+        "message": "会社により管理"
+    },
+    "options_companymanaged_fill": {
+        "message": "この拡張機能の設定は $company$ により管理される場合があります。ご不明な点があれば $support$ までお問い合わせください。",
+        "placeholders": {
+            "company": {
+                "content": "$1",
+                "example": "Feel Good Inc."
+            },
+            "support": {
+                "content": "$2",
+                "example": "it-support@company.invalid"
+            }
+        }
+    },
+    "options_companymanaged": {
+        "message": "この拡張機能の設定は組織によって管理されています。"
+    },
+    "options_yourversion": {
+        "message": "現在 uDomainFlag $version$ を使用しています。拡張機能 ID は $extensionid$ です。",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.3.4"
+            },
+            "extensionid": {
+                "content": "$2",
+                "example": "eklbfdpploakpkdakoielobggbhemlnm"
+            }
+        }
+    },
+    "options_crashreporting": {
+        "message": "クラッシュレポート"
+    },
+    "options_crashreports": {
+        "message": "クラッシュレポートは現在"
+    },
+    "options_crashreports_why": {
+        "message": "クラッシュレポートはエラーの検出と修正に役立ち、uDomainFlag の安定性を向上させます。個人データが収集または送信されることはありません。"
+    },
+    "options_secureconnection": {
+        "message": "$hostname$ への接続は $protocol$ ($cipher$) により保護されています。",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            },
+            "protocol": {
+                "content": "$2",
+                "example": "TLSv1.3"
+            },
+            "cipher": {
+                "content": "$3",
+                "example": "TLS_AES_256_GCM_SHA384"
+            }
+        }
+    },
+    "options_secureconnection_failed": {
+        "message": "$hostname$ への接続に失敗しました。uDomainFlag の全機能は利用できません。",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "options_changelog": {
+        "message": "変更履歴"
+    },
+    "options_version": {
+        "message": "バージョン"
+    },
+    "options_connection": {
+        "message": "接続"
+    },
+    "options_howitworks": {
+        "message": "uDomainFlag の仕組みを詳しく知りたいですか？以下をご覧ください"
+    },
+    "options_privacypolicy": {
+        "message": "プライバシーポリシー"
+    },
+    "options_imprint": {
+        "message": "法的情報"
+    },
+    "options_translation": {
+        "message": "翻訳"
+    },
+    "options_help_translate": {
+        "message": "uDomainFlag をあなたの言語に翻訳するのを手伝ってください:"
+    },
+    "enabled": {
+        "message": "有効"
+    },
+    "disabled": {
+        "message": "無効"
+    },
+    "offline_title": {
+        "message": "サーバーに接続できません"
+    },
+    "offline_description": {
+        "message": "サーバー $hostname$ に接続できないか、不正な応答が返されました。\n後でもう一度お試しください。",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "offline_companymanaged": {
+        "message": "uDomainFlag は現在会社によって管理されています。設定に問題がある可能性があります。"
+    },
+    "_lang": {
+        "message": "日本語"
+    }
+}

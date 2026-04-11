@@ -3,7 +3,7 @@
         "message": "Extension du navigateur"
     },
     "browser_ressource": {
-        "message": "Page du navigateur"
+        "message": "Ressource du navigateur"
     },
     "description": {
         "message": "Recevez directement des informations sur le site web visité dans votre navigateur."
@@ -21,13 +21,13 @@
         "message": "Domaine interne"
     },
     "local_ressource": {
-        "message": "La page a été récupéré localement depuis votre ordinateur."
+        "message": "La page a été récupérée localement depuis votre ordinateur."
     },
     "more_info": {
         "message": "Plus d'informations"
     },
     "multi_domain": {
-        "message": "Le domaine pointe vers plusieurs addresses IP."
+        "message": "Le domaine pointe vers plusieurs adresses IP."
     },
     "name": {
         "message": "Nom"
@@ -71,7 +71,7 @@
         }
     },
     "options_crashreporting": {
-        "message": "Activer les rapports d'erreur"
+        "message": "Rapports d'erreur"
     },
     "options_crashreports": {
         "message": "Les rapports d'erreur sont actuellement"
@@ -115,7 +115,7 @@
         "message": "Connexion"
     },
     "options_howitworks": {
-        "message": "Vous voulez savoir comment uDomainFlag fonctionne en détails ? Plus d'informations ci-dessous"
+        "message": "Vous voulez savoir comment uDomainFlag fonctionne en détail ? Plus d'informations ci-dessous"
     },
     "options_privacypolicy": {
         "message": "Politique de confidentialité"
@@ -124,10 +124,10 @@
         "message": "Mentions légales"
     },
     "enabled": {
-        "message": "Activés"
+        "message": "Activé"
     },
     "disabled": {
-        "message": "Désactivés"
+        "message": "Désactivé"
     },
     "offline_title": {
         "message": "Serveur inatteignable"

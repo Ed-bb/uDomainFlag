@@ -18,13 +18,13 @@
         "message": "Información adicional"
     },
     "multi_domain": {
-        "message": "Dominio se refiere a múltiples direcciones IP."
+        "message": "El dominio apunta a varias direcciones IP."
     },
     "name": {
         "message": "Nombre"
     },
     "privacy": {
-        "message": "Intimidad"
+        "message": "Privacidad"
     },
     "unknown": {
         "message": "Desconocido"
@@ -118,7 +118,7 @@
         "message": "Política de privacidad"
     },
     "options_imprint": {
-        "message": "Legal"
+        "message": "Aviso legal"
     },
     "enabled": {
         "message": "Activado"
@@ -127,7 +127,7 @@
         "message": "Desactivado"
     },
     "offline_title": {
-        "message": "No puedo acceder al servidor"
+        "message": "Servidor no accesible"
     },
     "offline_description": {
         "message": "El servidor $hostname$ no pudo ser alcanzado o devolvió una respuesta incorrecta.\nPor favor, inténtelo de nuevo más tarde.",
@@ -145,7 +145,7 @@
         "message": "Español"
     },
     "options_crashreports": {
-        "message": "El informe de fallos es actualmente"
+        "message": "Los informes de fallos están actualmente"
     },
     "options_translation": {
         "message": "Traducción"

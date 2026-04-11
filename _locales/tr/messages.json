@@ -1,0 +1,156 @@
+{
+    "browser_extension": {
+        "message": "Tarayıcı uzantısı"
+    },
+    "browser_ressource": {
+        "message": "Tarayıcı kaynağı"
+    },
+    "description": {
+        "message": "Bir web sitesini ziyaret ederken alan adı bilgilerini doğrudan tarayıcıda alın."
+    },
+    "desc": {
+        "message": "Açıklama"
+    },
+    "domain_unknown": {
+        "message": "İstenen sayfa için veri bulunamadı. Bunun yerel veya geçersiz bir alan adı olması muhtemeldir."
+    },
+    "hostname": {
+        "message": "Ana makine adı"
+    },
+    "internal_domain": {
+        "message": "Dahili alan adı"
+    },
+    "local_ressource": {
+        "message": "İstenen belge yerel bilgisayardan alındı."
+    },
+    "more_info": {
+        "message": "Ek bilgiler"
+    },
+    "multi_domain": {
+        "message": "Alan adı birden fazla IP adresine işaret ediyor."
+    },
+    "name": {
+        "message": "Ad"
+    },
+    "privacy": {
+        "message": "Gizlilik"
+    },
+    "unknown": {
+        "message": "Bilinmiyor"
+    },
+    "options_companymanaged_title": {
+        "message": "Şirket tarafından yönetiliyor"
+    },
+    "options_companymanaged_fill": {
+        "message": "Bu uzantının ayarları $company$ tarafından yönetilebilir. Sorularınız varsa lütfen $support$ ile iletişime geçin.",
+        "placeholders": {
+            "company": {
+                "content": "$1",
+                "example": "Feel Good Inc."
+            },
+            "support": {
+                "content": "$2",
+                "example": "it-support@company.invalid"
+            }
+        }
+    },
+    "options_companymanaged": {
+        "message": "Bu uzantının ayarları kuruluşunuz tarafından yönetiliyor."
+    },
+    "options_yourversion": {
+        "message": "uDomainFlag $version$ sürümünü $extensionid$ uzantı kimliği ile kullanıyorsunuz.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.3.4"
+            },
+            "extensionid": {
+                "content": "$2",
+                "example": "eklbfdpploakpkdakoielobggbhemlnm"
+            }
+        }
+    },
+    "options_crashreporting": {
+        "message": "Çökme raporları"
+    },
+    "options_crashreports": {
+        "message": "Çökme raporları şu anda"
+    },
+    "options_crashreports_why": {
+        "message": "Çökme raporları hataların tespit edilmesine ve düzeltilmesine yardımcı olur ve uDomainFlag'in kararlılığını artırır. Hiçbir kişisel veri toplanmaz veya iletilmez."
+    },
+    "options_secureconnection": {
+        "message": "$hostname$ ile bağlantınız $protocol$ ($cipher$) kullanılarak güvence altına alınmıştır.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            },
+            "protocol": {
+                "content": "$2",
+                "example": "TLSv1.3"
+            },
+            "cipher": {
+                "content": "$3",
+                "example": "TLS_AES_256_GCM_SHA384"
+            }
+        }
+    },
+    "options_secureconnection_failed": {
+        "message": "$hostname$ ile bağlantınız başarısız oldu. uDomainFlag'in tüm işlevleri kullanılamıyor.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "options_changelog": {
+        "message": "Değişiklik günlüğü"
+    },
+    "options_version": {
+        "message": "Sürüm"
+    },
+    "options_connection": {
+        "message": "Bağlantı"
+    },
+    "options_howitworks": {
+        "message": "uDomainFlag'in nasıl çalıştığını ayrıntılı olarak öğrenmek ister misiniz? Aşağıdan inceleyin"
+    },
+    "options_privacypolicy": {
+        "message": "Gizlilik politikası"
+    },
+    "options_imprint": {
+        "message": "Yasal bildirim"
+    },
+    "options_translation": {
+        "message": "Çeviri"
+    },
+    "options_help_translate": {
+        "message": "uDomainFlag'i kendi dilinize çevirmemize şu adreste yardımcı olun:"
+    },
+    "enabled": {
+        "message": "Etkin"
+    },
+    "disabled": {
+        "message": "Devre dışı"
+    },
+    "offline_title": {
+        "message": "Sunucuya ulaşılamıyor"
+    },
+    "offline_description": {
+        "message": "$hostname$ sunucusuna ulaşılamadı veya yanlış bir yanıt döndürüldü.\nLütfen daha sonra tekrar deneyin.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "offline_companymanaged": {
+        "message": "uDomainFlag şu anda şirketiniz tarafından yönetiliyor. Bir yapılandırma sorunu olabilir."
+    },
+    "_lang": {
+        "message": "Türkçe"
+    }
+}

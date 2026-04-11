@@ -1,0 +1,156 @@
+{
+    "browser_extension": {
+        "message": "إضافة المتصفح"
+    },
+    "browser_ressource": {
+        "message": "مورد المتصفح"
+    },
+    "description": {
+        "message": "احصل على معلومات النطاق مباشرة في المتصفح أثناء تصفح موقع ويب."
+    },
+    "desc": {
+        "message": "الوصف"
+    },
+    "domain_unknown": {
+        "message": "تعذر العثور على بيانات للصفحة المطلوبة. من المحتمل أن يكون هذا نطاقًا محليًا أو غير صالح."
+    },
+    "hostname": {
+        "message": "اسم المضيف"
+    },
+    "internal_domain": {
+        "message": "نطاق داخلي"
+    },
+    "local_ressource": {
+        "message": "تم الحصول على المستند المطلوب من الكمبيوتر المحلي."
+    },
+    "more_info": {
+        "message": "معلومات إضافية"
+    },
+    "multi_domain": {
+        "message": "يشير النطاق إلى عدة عناوين IP."
+    },
+    "name": {
+        "message": "الاسم"
+    },
+    "privacy": {
+        "message": "الخصوصية"
+    },
+    "unknown": {
+        "message": "غير معروف"
+    },
+    "options_companymanaged_title": {
+        "message": "تتم إدارته من قبل الشركة"
+    },
+    "options_companymanaged_fill": {
+        "message": "قد تتم إدارة إعدادات هذه الإضافة بواسطة $company$. إذا كانت لديك أي أسئلة، يرجى التواصل مع $support$.",
+        "placeholders": {
+            "company": {
+                "content": "$1",
+                "example": "Feel Good Inc."
+            },
+            "support": {
+                "content": "$2",
+                "example": "it-support@company.invalid"
+            }
+        }
+    },
+    "options_companymanaged": {
+        "message": "تتم إدارة إعدادات هذه الإضافة بواسطة مؤسستك."
+    },
+    "options_yourversion": {
+        "message": "أنت تستخدم uDomainFlag بالإصدار $version$ ومعرّف الإضافة $extensionid$.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.3.4"
+            },
+            "extensionid": {
+                "content": "$2",
+                "example": "eklbfdpploakpkdakoielobggbhemlnm"
+            }
+        }
+    },
+    "options_crashreporting": {
+        "message": "تقارير الأعطال"
+    },
+    "options_crashreports": {
+        "message": "تقارير الأعطال حاليًا"
+    },
+    "options_crashreports_why": {
+        "message": "تساعد تقارير الأعطال في اكتشاف الأخطاء وإصلاحها وتحسين استقرار uDomainFlag. لا يتم جمع أو إرسال أي بيانات شخصية."
+    },
+    "options_secureconnection": {
+        "message": "اتصالك بـ $hostname$ مؤمّن باستخدام $protocol$ ($cipher$).",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            },
+            "protocol": {
+                "content": "$2",
+                "example": "TLSv1.3"
+            },
+            "cipher": {
+                "content": "$3",
+                "example": "TLS_AES_256_GCM_SHA384"
+            }
+        }
+    },
+    "options_secureconnection_failed": {
+        "message": "فشل اتصالك بـ $hostname$. الوظائف الكاملة لـ uDomainFlag غير متاحة.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "options_changelog": {
+        "message": "سجل التغييرات"
+    },
+    "options_version": {
+        "message": "الإصدار"
+    },
+    "options_connection": {
+        "message": "الاتصال"
+    },
+    "options_howitworks": {
+        "message": "هل تريد معرفة كيفية عمل uDomainFlag بالتفصيل؟ تعرّف على ذلك أدناه"
+    },
+    "options_privacypolicy": {
+        "message": "سياسة الخصوصية"
+    },
+    "options_imprint": {
+        "message": "البيانات القانونية"
+    },
+    "options_translation": {
+        "message": "الترجمة"
+    },
+    "options_help_translate": {
+        "message": "ساعدنا في ترجمة uDomainFlag إلى لغتك على:"
+    },
+    "enabled": {
+        "message": "مفعّل"
+    },
+    "disabled": {
+        "message": "معطّل"
+    },
+    "offline_title": {
+        "message": "الخادم غير متاح"
+    },
+    "offline_description": {
+        "message": "تعذر الوصول إلى الخادم $hostname$ أو أعاد استجابة غير صحيحة.\nيرجى المحاولة مرة أخرى لاحقًا.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "offline_companymanaged": {
+        "message": "تتم إدارة uDomainFlag حاليًا بواسطة شركتك. قد تكون هناك مشكلة في الإعداد."
+    },
+    "_lang": {
+        "message": "العربية"
+    }
+}

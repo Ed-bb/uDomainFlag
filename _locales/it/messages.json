@@ -1,0 +1,156 @@
+{
+    "browser_extension": {
+        "message": "Estensione del browser"
+    },
+    "browser_ressource": {
+        "message": "Risorsa del browser"
+    },
+    "description": {
+        "message": "Ricevi informazioni su un dominio direttamente nel browser mentre navighi su un sito web."
+    },
+    "desc": {
+        "message": "Descrizione"
+    },
+    "domain_unknown": {
+        "message": "Non è stato possibile trovare dati per la pagina richiesta. Probabilmente si tratta di un dominio locale o non valido."
+    },
+    "hostname": {
+        "message": "Nome host"
+    },
+    "internal_domain": {
+        "message": "Dominio interno"
+    },
+    "local_ressource": {
+        "message": "Il documento richiesto è stato ottenuto dal computer locale."
+    },
+    "more_info": {
+        "message": "Ulteriori informazioni"
+    },
+    "multi_domain": {
+        "message": "Il dominio punta a più indirizzi IP."
+    },
+    "name": {
+        "message": "Nome"
+    },
+    "privacy": {
+        "message": "Privacy"
+    },
+    "unknown": {
+        "message": "Sconosciuto"
+    },
+    "options_companymanaged_title": {
+        "message": "Gestito dall'azienda"
+    },
+    "options_companymanaged_fill": {
+        "message": "Le impostazioni di questa estensione possono essere gestite da $company$. In caso di domande, contatta $support$.",
+        "placeholders": {
+            "company": {
+                "content": "$1",
+                "example": "Feel Good Inc."
+            },
+            "support": {
+                "content": "$2",
+                "example": "it-support@company.invalid"
+            }
+        }
+    },
+    "options_companymanaged": {
+        "message": "Le impostazioni di questa estensione sono gestite dalla tua organizzazione."
+    },
+    "options_yourversion": {
+        "message": "Stai usando uDomainFlag $version$ con ID estensione $extensionid$.",
+        "placeholders": {
+            "version": {
+                "content": "$1",
+                "example": "1.2.3.4"
+            },
+            "extensionid": {
+                "content": "$2",
+                "example": "eklbfdpploakpkdakoielobggbhemlnm"
+            }
+        }
+    },
+    "options_crashreporting": {
+        "message": "Segnalazioni di arresto anomalo"
+    },
+    "options_crashreports": {
+        "message": "Le segnalazioni di arresto anomalo sono attualmente"
+    },
+    "options_crashreports_why": {
+        "message": "Le segnalazioni di arresto anomalo aiutano a rilevare e correggere gli errori e migliorano la stabilità di uDomainFlag. Non vengono raccolti o trasmessi dati personali."
+    },
+    "options_secureconnection": {
+        "message": "La connessione a $hostname$ è protetta tramite $protocol$ ($cipher$).",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            },
+            "protocol": {
+                "content": "$2",
+                "example": "TLSv1.3"
+            },
+            "cipher": {
+                "content": "$3",
+                "example": "TLS_AES_256_GCM_SHA384"
+            }
+        }
+    },
+    "options_secureconnection_failed": {
+        "message": "La connessione a $hostname$ non è riuscita. La piena funzionalità di uDomainFlag non è disponibile.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "options_changelog": {
+        "message": "Registro delle modifiche"
+    },
+    "options_version": {
+        "message": "Versione"
+    },
+    "options_connection": {
+        "message": "Connessione"
+    },
+    "options_howitworks": {
+        "message": "Vuoi sapere in dettaglio come funziona uDomainFlag? Scoprilo qui sotto"
+    },
+    "options_privacypolicy": {
+        "message": "Informativa sulla privacy"
+    },
+    "options_imprint": {
+        "message": "Note legali"
+    },
+    "options_translation": {
+        "message": "Traduzione"
+    },
+    "options_help_translate": {
+        "message": "Aiutaci a tradurre uDomainFlag nella tua lingua su:"
+    },
+    "enabled": {
+        "message": "Attivato"
+    },
+    "disabled": {
+        "message": "Disattivato"
+    },
+    "offline_title": {
+        "message": "Server non raggiungibile"
+    },
+    "offline_description": {
+        "message": "Non è stato possibile raggiungere il server $hostname$ oppure ha restituito una risposta non corretta.\nRiprova più tardi.",
+        "placeholders": {
+            "hostname": {
+                "content": "$1",
+                "example": "dfdata.bella.network"
+            }
+        }
+    },
+    "offline_companymanaged": {
+        "message": "uDomainFlag è attualmente gestito dalla tua azienda. Potrebbe esserci un problema di configurazione."
+    },
+    "_lang": {
+        "message": "Italiano"
+    }
+}

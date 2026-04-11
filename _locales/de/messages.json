@@ -27,7 +27,7 @@
         "message": "Weitere Informationen"
     },
     "multi_domain": {
-        "message": "Domain verweist auf mehrere IP Adressen."
+        "message": "Domain verweist auf mehrere IP-Adressen."
     },
     "name": {
         "message": "Name"
@@ -55,7 +55,7 @@
         }
     },
     "options_companymanaged": {
-        "message": "Einstellungen dieser Erweiterung werden durch deine Orginasition verwaltet."
+        "message": "Einstellungen dieser Erweiterung werden durch deine Organisation verwaltet."
     },
     "options_yourversion": {
         "message": "Du benutzt uDomainFlag $version$ mit der Erweiterungs-ID $extensionid$.",
