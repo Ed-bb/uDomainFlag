@@ -9,6 +9,9 @@ import {
 } from "./storage.js";
 
 const ipCacheStorageKey = "BackgroundIPCache";
+const ipCacheEntryTTLms = 6 * 60 * 60 * 1000;
+const ipCacheTouchIntervalMs = 60 * 1000;
+const ipCacheMaxEntries = 256;
 const runtimeAlarms = {
 	reachableCheck: { periodInMinutes: 5.0 },
 	companySync: {
@@ -22,33 +25,133 @@ let runtimeInitialization = null;
 let isInitialized = false;
 let tabLookupRequests = new Map();
 
-async function loadIPCache(getObjectFromSessionStorage) {
+function normalizeIPCacheEntry(entry, now) {
+	if (typeof entry === "string" && entry !== "") {
+		return {
+			ip: entry,
+			updatedAt: now,
+			lastAccessedAt: now,
+		};
+	}
+
+	if (typeof entry !== "object" || entry === null || typeof entry.ip !== "string" || entry.ip === "") {
+		return null;
+	}
+
+	const updatedAt = Number.isFinite(entry.updatedAt) ? entry.updatedAt : now;
+	const lastAccessedAt = Number.isFinite(entry.lastAccessedAt) ? entry.lastAccessedAt : updatedAt;
+
+	return {
+		ip: entry.ip,
+		updatedAt,
+		lastAccessedAt,
+	};
+}
+
+function compactIPCache(storedCache, now) {
+	if (typeof storedCache !== "object" || storedCache === null) {
+		return {};
+	}
+
+	const entries = [];
+	for (const [domain, entry] of Object.entries(storedCache)) {
+		const normalizedEntry = normalizeIPCacheEntry(entry, now);
+		if (normalizedEntry === null) {
+			continue;
+		}
+
+		if (now - normalizedEntry.updatedAt >= ipCacheEntryTTLms) {
+			continue;
+		}
+
+		entries.push([domain, normalizedEntry]);
+	}
+
+	entries.sort(function(entryA, entryB) {
+		const accessDelta = entryA[1].lastAccessedAt - entryB[1].lastAccessedAt;
+		if (accessDelta !== 0) {
+			return accessDelta;
+		}
+
+		const updateDelta = entryA[1].updatedAt - entryB[1].updatedAt;
+		if (updateDelta !== 0) {
+			return updateDelta;
+		}
+
+		return entryA[0].localeCompare(entryB[0]);
+	});
+
+	return Object.fromEntries(entries.slice(-ipCacheMaxEntries));
+}
+
+async function persistIPCache(saveObjectInSessionStorage, cache) {
+	if (typeof saveObjectInSessionStorage !== "function") {
+		return;
+	}
+
+	await saveObjectInSessionStorage({ [ipCacheStorageKey]: cache });
+}
+
+async function loadIPCache(getObjectFromSessionStorage, saveObjectInSessionStorage, getNow) {
 	if (ipCache !== null) {
 		return ipCache;
 	}
 
 	const storedCache = await getObjectFromSessionStorage(ipCacheStorageKey);
-	ipCache = typeof storedCache === "object" && storedCache !== null ? storedCache : {};
+	const now = getNow();
+	ipCache = compactIPCache(storedCache, now);
+
+	if (JSON.stringify(storedCache ?? {}) !== JSON.stringify(ipCache)) {
+		await persistIPCache(saveObjectInSessionStorage, ipCache);
+	}
+
 	return ipCache;
 }
 
-async function getCachedIP(domain, getObjectFromSessionStorage) {
+async function getCachedIP(domain, getObjectFromSessionStorage, saveObjectInSessionStorage, getNow) {
 	if (typeof domain !== "string" || domain === "") {
 		return undefined;
 	}
 
-	const cache = await loadIPCache(getObjectFromSessionStorage);
-	return cache[domain];
+	const cache = await loadIPCache(getObjectFromSessionStorage, saveObjectInSessionStorage, getNow);
+	const entry = cache[domain];
+	if (typeof entry === "undefined") {
+		return undefined;
+	}
+
+	const now = getNow();
+	if (now - entry.updatedAt >= ipCacheEntryTTLms) {
+		delete cache[domain];
+		await persistIPCache(saveObjectInSessionStorage, cache);
+		return undefined;
+	}
+
+	if (now - entry.lastAccessedAt >= ipCacheTouchIntervalMs) {
+		cache[domain] = {
+			...entry,
+			lastAccessedAt: now,
+		};
+		await persistIPCache(saveObjectInSessionStorage, cache);
+	}
+
+	return entry.ip;
 }
 
-async function cacheIP(domain, ip, getObjectFromSessionStorage, saveObjectInSessionStorage) {
+async function cacheIP(domain, ip, getObjectFromSessionStorage, saveObjectInSessionStorage, getNow) {
 	if (typeof domain !== "string" || domain === "" || typeof ip !== "string" || ip === "") {
 		return;
 	}
 
-	const cache = await loadIPCache(getObjectFromSessionStorage);
-	cache[domain] = ip;
-	await saveObjectInSessionStorage({ [ipCacheStorageKey]: cache });
+	const now = getNow();
+	const cache = await loadIPCache(getObjectFromSessionStorage, saveObjectInSessionStorage, getNow);
+	cache[domain] = {
+		ip,
+		updatedAt: now,
+		lastAccessedAt: now,
+	};
+
+	ipCache = compactIPCache(cache, now);
+	await persistIPCache(saveObjectInSessionStorage, ipCache);
 }
 
 async function ensureAlarm(name, config, df, chrome) {
@@ -75,11 +178,11 @@ async function ensureRuntimeAlarms(df, chrome) {
 	}
 }
 
-async function initializeRuntimeState(df, getObjectFromSessionStorage) {
+async function initializeRuntimeState(df, getObjectFromSessionStorage, saveObjectInSessionStorage, getNow) {
 	await Promise.all([
 		df.checkUUID(),
 		df.getAPIDomain(),
-		loadIPCache(getObjectFromSessionStorage),
+		loadIPCache(getObjectFromSessionStorage, saveObjectInSessionStorage, getNow),
 	]);
 }
 
@@ -90,7 +193,12 @@ async function ensureServiceWorkerReady(deps) {
 
 	runtimeInitialization = (async function() {
 		await ensureRuntimeAlarms(deps.df, deps.chrome);
-		await initializeRuntimeState(deps.df, deps.getObjectFromSessionStorage);
+		await initializeRuntimeState(
+			deps.df,
+			deps.getObjectFromSessionStorage,
+			deps.saveObjectInSessionStorage,
+			deps.getNow
+		);
 	})();
 
 	try {
@@ -217,13 +325,18 @@ function registerListeners(deps) {
 		) {
 			const data = { tab: tabId, url: tab.url };
 			const domain = deps.df.parseUrl(tab.url);
-				const cachedIP = await getCachedIP(domain, deps.getObjectFromSessionStorage);
-				if (typeof cachedIP !== "undefined") {
-					data.ip = cachedIP;
-				}
-				void queueCountryLookup(data, deps);
+			const cachedIP = await getCachedIP(
+				domain,
+				deps.getObjectFromSessionStorage,
+				deps.saveObjectInSessionStorage,
+				deps.getNow
+			);
+			if (typeof cachedIP !== "undefined") {
+				data.ip = cachedIP;
 			}
-		});
+			void queueCountryLookup(data, deps);
+		}
+	});
 
 	deps.chrome.runtime.onMessage.addListener(function(message, sender, senderResponse) {
 		switch (message.type) {
@@ -231,7 +344,12 @@ function registerListeners(deps) {
 				const domain = deps.df.parseUrl(message.url);
 				(async function() {
 					try {
-						senderResponse(await getCachedIP(domain, deps.getObjectFromSessionStorage));
+						senderResponse(await getCachedIP(
+							domain,
+							deps.getObjectFromSessionStorage,
+							deps.saveObjectInSessionStorage,
+							deps.getNow
+						));
 					}
 					catch (error) {
 						senderResponse(undefined);
@@ -264,7 +382,8 @@ function registerListeners(deps) {
 			domain,
 			ret.ip,
 			deps.getObjectFromSessionStorage,
-			deps.saveObjectInSessionStorage
+			deps.saveObjectInSessionStorage,
+			deps.getNow
 		);
 
 		void queueCountryLookup({ tab: ret.tabId, url: ret.url, ip: ret.ip }, deps);
@@ -285,6 +404,7 @@ export async function initializeBackground(overrides = {}) {
 		df: defaultDf,
 		getObjectFromSessionStorage: defaultGetObjectFromSessionStorage,
 		saveObjectInSessionStorage: defaultSaveObjectInSessionStorage,
+		getNow: Date.now,
 		...overrides,
 	};
 
@@ -299,3 +419,9 @@ export function resetBackgroundStateForTests() {
 	isInitialized = false;
 	tabLookupRequests = new Map();
 }
+
+export const backgroundCacheConfig = {
+	ipCacheEntryTTLms,
+	ipCacheTouchIntervalMs,
+	ipCacheMaxEntries,
+};

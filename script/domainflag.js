@@ -70,6 +70,10 @@ function normalizeLookupResponse(response) {
 	return response;
 }
 
+function normalizeStringValue(value) {
+	return typeof value === "string" ? value.trim() : "";
+}
+
 function createCountryLookupKey(domain, ip) {
 	const normalizedIP = typeof ip === "string" && ip !== "" ? ip : "";
 	return `${domain}\n${normalizedIP}`;
@@ -320,19 +324,36 @@ export const df = {
 			});
 		}
 
-		let title = "";
-		if (typeof data.request.shortcountry !== "undefined") {
-			if (data.request.shortcountry.length === 2) {
-				title += getCountryName(data.request.shortcountry);
+		const shortcountry = normalizeStringValue(data.request.shortcountry);
+		const customflag = normalizeStringValue(data.request.customflag);
+		const country = normalizeStringValue(data.request.country);
+
+		let title = "Unknown";
+		if (shortcountry !== "") {
+			if (shortcountry.length === 2) {
+				title = getCountryName(shortcountry);
 			}
 			else {
-				title += data.request.shortcountry;
+				title = shortcountry;
 			}
 		}
+		else if (country !== "") {
+			title = country;
+		}
 
-		let flagIcon = data.request.shortcountry.toLowerCase();
-		if (typeof data.request.customflag !== "undefined") {
-			flagIcon = data.request.customflag;
+		let flagIcon = "images/special-flag/unknown.png";
+		if (shortcountry !== "") {
+			flagIcon = shortcountry.toLowerCase();
+		}
+		if (customflag !== "") {
+			flagIcon = customflag;
+		}
+
+		if (shortcountry === "" && customflag === "") {
+			getSentry()?.withScope(function(scope) {
+				scope.setExtra("request", data.request);
+				getSentry()?.captureMessage("country lookup response missing flag metadata");
+			});
 		}
 
 		let popup = "popup.html#";
