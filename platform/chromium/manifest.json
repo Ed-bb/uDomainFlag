@@ -33,7 +33,7 @@
 		"open_in_tab": false
 	},
 
-	"minimum_chrome_version": "88",
+	"minimum_chrome_version": "92",
 
 	"permissions": [
 		"storage",
