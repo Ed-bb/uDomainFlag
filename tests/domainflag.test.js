@@ -31,6 +31,23 @@ function createStorageArea(backingStore) {
 	};
 }
 
+function createStorageChangeEvent() {
+	const listeners = new Set();
+	return {
+		addListener(listener) {
+			listeners.add(listener);
+		},
+		removeListener(listener) {
+			listeners.delete(listener);
+		},
+		dispatch(changes, areaName) {
+			for (const listener of listeners) {
+				listener(changes, areaName);
+			}
+		},
+	};
+}
+
 async function loadModules() {
 	if (domainflagModulePromise === null) {
 		domainflagModulePromise = import("../script/domainflag.js");
@@ -62,6 +79,7 @@ async function createHarness({
 		setPopup: [],
 		setTitle: [],
 	};
+	const storageOnChanged = createStorageChangeEvent();
 
 	class FakeOffscreenCanvas {
 		constructor(width, height) {
@@ -115,13 +133,14 @@ async function createHarness({
 				return "";
 			},
 		},
-		storage: {
-			local: createStorageArea(localStorage),
-			sync: createStorageArea(syncStorage),
-			session: createStorageArea(sessionStorage),
-			managed: createStorageArea(managedStorage),
-		},
-	};
+			storage: {
+				local: createStorageArea(localStorage),
+				sync: createStorageArea(syncStorage),
+				session: createStorageArea(sessionStorage),
+				managed: createStorageArea(managedStorage),
+				onChanged: storageOnChanged,
+			},
+		};
 
 	globalThis.Sentry = {
 		init() {},
@@ -182,6 +201,25 @@ async function createHarness({
 		},
 		getActiveDomain() {
 			return parametersModule.api_domain;
+		},
+		dispatchStorageChange(areaName, changes) {
+			const backingStoreByArea = {
+				local: localStorage,
+				sync: syncStorage,
+				managed: managedStorage,
+				session: sessionStorage,
+			};
+			const backingStore = backingStoreByArea[areaName];
+			if (typeof backingStore === "object" && backingStore !== null) {
+				for (const [key, change] of Object.entries(changes)) {
+					if (typeof change !== "object" || change === null || !("newValue" in change)) {
+						delete backingStore[key];
+						continue;
+					}
+					backingStore[key] = change.newValue;
+				}
+			}
+			storageOnChanged.dispatch(changes, areaName);
 		},
 	};
 }
@@ -414,6 +452,63 @@ test("handleFallback keeps the managed server when upstream fallback is disabled
 	assert.equal(result, "internal.example");
 	assert.equal(harness.getSessionValue("Server"), "internal.example");
 	assert.equal(harness.getActiveDomain(), "internal.example");
+});
+
+test("getValueFromStorage invalidates cached managed values after storage changes", async function() {
+	const harness = await createHarness({
+		managedStorage: {
+			Secret: "initial-secret",
+		},
+	});
+
+	assert.equal(await harness.df.getValueFromStorage("Secret"), "initial-secret");
+
+	harness.dispatchStorageChange("managed", {
+		Secret: {
+			oldValue: "initial-secret",
+			newValue: "rotated-secret",
+		},
+	});
+
+	assert.equal(await harness.df.getValueFromStorage("Secret"), "rotated-secret");
+});
+
+test("getValueFromStorage invalidates cached sync values after storage changes", async function() {
+	const harness = await createHarness({
+		syncStorage: {
+			RDPR: "disabled",
+		},
+	});
+
+	assert.equal(await harness.df.getValueFromStorage("RDPR"), "disabled");
+
+	harness.dispatchStorageChange("sync", {
+		RDPR: {
+			oldValue: "disabled",
+			newValue: "enabled",
+		},
+	});
+
+	assert.equal(await harness.df.getValueFromStorage("RDPR"), "enabled");
+});
+
+test("getValueFromStorage invalidates cached local fallback values after storage changes", async function() {
+	const harness = await createHarness({
+		localStorage: {
+			Secret: "local-secret",
+		},
+	});
+
+	assert.equal(await harness.df.getValueFromStorage("Secret"), "local-secret");
+
+	harness.dispatchStorageChange("local", {
+		Secret: {
+			oldValue: "local-secret",
+			newValue: "updated-local-secret",
+		},
+	});
+
+	assert.equal(await harness.df.getValueFromStorage("Secret"), "updated-local-secret");
 });
 
 test("countryLookup deduplicates concurrent backend requests for the same domain and ip", async function() {

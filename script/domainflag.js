@@ -25,6 +25,8 @@ const countryLookupCacheTTL = 15 * 1000;
 const countryLookupCacheMaxEntries = 100;
 let countryLookupCache = new Map();
 let inflightCountryLookups = new Map();
+let storageCacheListenerChrome = null;
+let storageCacheListener = null;
 const safeFallbackIconPath = "images/special-flag/unknown.png";
 const safeLocalIconPathPattern = /^images\/[A-Za-z0-9/_-]+\.(png|svg|webp|avif|gif|bmp|ico|jpe?g)$/i;
 
@@ -34,6 +36,57 @@ function getChrome() {
 
 function getSentry() {
 	return globalThis.Sentry;
+}
+
+// invalidateStorageCache is called when the storage changes to clear the local
+// cache of storage values. This ensures that the extension always uses the most
+// up-to-date values from storage, even if they are changed from another context
+// (e.g., another tab or window).
+function invalidateStorageCache(changes, areaName) {
+	if (
+		areaName !== "managed" &&
+		areaName !== "sync" &&
+		areaName !== "local"
+	) {
+		return;
+	}
+
+	if (typeof changes !== "object" || changes === null) {
+		return;
+	}
+
+	for (const key of Object.keys(changes)) {
+		delete storageCache[key];
+	}
+}
+
+// ensureStorageCacheInvalidationListener sets up a listener for changes to the
+// extension's storage areas (managed, sync, local) to invalidate the local
+// cache when changes occur. This is important to ensure that the extension
+// always has the most up-to-date data from storage, even if it is changed from
+// another context (e.g., another tab or window).
+function ensureStorageCacheInvalidationListener() {
+	const chrome = getChrome();
+	if (!chrome?.storage?.onChanged?.addListener) {
+		return;
+	}
+
+	if (storageCacheListenerChrome === chrome && storageCacheListener !== null) {
+		return;
+	}
+
+	if (
+		storageCacheListenerChrome?.storage?.onChanged?.removeListener &&
+		storageCacheListener !== null
+	) {
+		storageCacheListenerChrome.storage.onChanged.removeListener(storageCacheListener);
+	}
+
+	storageCacheListener = function(changes, areaName) {
+		invalidateStorageCache(changes, areaName);
+	};
+	chrome.storage.onChanged.addListener(storageCacheListener);
+	storageCacheListenerChrome = chrome;
 }
 
 async function buildRequestHeaders(data) {
@@ -924,6 +977,8 @@ export const df = {
 	},
 
 	async getValueFromStorage(key) {
+		ensureStorageCacheInvalidationListener();
+
 		if (typeof storageCache[key] !== "undefined") {
 			return storageCache[key];
 		}
@@ -977,4 +1032,6 @@ export function resetDomainflagStateForTests() {
 	storageCache = {};
 	countryLookupCache = new Map();
 	inflightCountryLookups = new Map();
+	storageCacheListenerChrome = null;
+	storageCacheListener = null;
 }
