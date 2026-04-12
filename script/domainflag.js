@@ -4,6 +4,13 @@
 
 import { getCountryName } from "./country.js";
 import {
+	api_domain_fallback,
+	api_domain_primary,
+	api_path,
+	api_protocol,
+	setAPIDomain
+} from "./parameters.js";
+import {
 	getObjectFromLocalStorage,
 	getObjectFromManagedStorage,
 	getObjectFromSessionStorage,
@@ -12,20 +19,14 @@ import {
 	saveObjectInSessionStorage,
 	saveObjectInSyncStorage,
 } from "./storage.js";
-import {
-	api_domain,
-	api_domain_fallback,
-	api_domain_primary,
-	api_path,
-	api_protocol,
-	setAPIDomain,
-} from "./parameters.js";
 
 let storageCache = {};
 const countryLookupCacheTTL = 15 * 1000;
 const countryLookupCacheMaxEntries = 100;
 let countryLookupCache = new Map();
 let inflightCountryLookups = new Map();
+const safeFallbackIconPath = "images/special-flag/unknown.png";
+const safeLocalIconPathPattern = /^images\/[A-Za-z0-9/_-]+\.(png|svg|webp|avif|gif|bmp|ico|jpe?g)$/i;
 
 function getChrome() {
 	return globalThis.chrome;
@@ -72,6 +73,58 @@ function normalizeLookupResponse(response) {
 
 function normalizeStringValue(value) {
 	return typeof value === "string" ? value.trim() : "";
+}
+
+// isAllowedBackendDataImageUrl checks if the value is a data URL with an image
+// MIME type and does not contain any characters that are not allowed in a data
+// URL. This is to prevent potential security issues with data URLs that could
+// be used to execute malicious code.
+function isAllowedBackendDataImageUrl(value) {
+	return /^data:image\/[a-z0-9.+-]+(?:;[^,]*)?,/i.test(value);
+}
+
+// isSafeLocalIconPath checks if the value is a safe local icon path that
+// matches the allowed pattern and does not contain any directory traversal
+// characters. This is to prevent potential security issues with local file
+// paths that could be used to access sensitive files on the user's system.
+function isSafeLocalIconPath(value) {
+	return safeLocalIconPathPattern.test(value) && !value.includes("..") && !value.includes("\\");
+}
+
+// resolveIconSource takes an icon value and determines the appropriate source for the icon.
+function resolveIconSource(iconValue) {
+	const normalizedIconValue = normalizeStringValue(iconValue);
+	if (normalizedIconValue === "") {
+		return "images/logo-16x16.png";
+	}
+
+	// If the icon value is a 2-letter country code or one of the special
+	// keywords, return the corresponding flag image path from the extension's
+	// images directory.
+	if (
+		normalizedIconValue.length === 2 ||
+		normalizedIconValue === "null" ||
+		normalizedIconValue === "catalonia" ||
+		normalizedIconValue === "england" ||
+		normalizedIconValue === "scotland" ||
+		normalizedIconValue === "wales" ||
+		normalizedIconValue === "fam"
+	) {
+		return `images/flag/${normalizedIconValue}.png`;
+	}
+
+	// If the icon value is a safe local icon path, return it as is.
+	if (isSafeLocalIconPath(normalizedIconValue)) {
+		return normalizedIconValue;
+	}
+
+	// If the icon value is a data URL with an image MIME type and does not
+	// contain any disallowed characters, return it as is.
+	if (isAllowedBackendDataImageUrl(normalizedIconValue)) {
+		return normalizedIconValue;
+	}
+
+	return null;
 }
 
 function createCountryLookupKey(domain, ip) {
@@ -434,26 +487,18 @@ export const df = {
 				return;
 			}
 
-			let icon;
-			if (typeof data.icon !== "undefined" && data.icon !== "") {
-				if (
-					data.icon.length === 2 ||
-					data.icon === "null" ||
-					data.icon === "catalonia" ||
-					data.icon === "england" ||
-					data.icon === "scotland" ||
-					data.icon === "wales" ||
-					data.icon === "fam"
-				) {
-					icon = await createImageBitmap(await (await fetch(`images/flag/${data.icon}.png`)).blob());
-				}
-				else {
-					icon = await createImageBitmap(await (await fetch(data.icon)).blob());
-				}
+			let iconSource = resolveIconSource(data.icon);
+			if (iconSource === null) {
+				getSentry()?.withScope(function(scope) {
+					scope.setExtra("icon", data.icon);
+					scope.setExtra("tab", data.tab);
+					scope.setExtra("url", data.url);
+					getSentry()?.captureMessage("blocked unsafe icon source");
+				});
+				iconSource = safeFallbackIconPath;
 			}
-			else {
-				icon = await createImageBitmap(await (await fetch("images/logo-16x16.png")).blob());
-			}
+
+			const icon = await createImageBitmap(await (await fetch(iconSource)).blob());
 
 			const canvas = new OffscreenCanvas(16, 16);
 			const ctx = canvas.getContext("2d");

@@ -294,6 +294,47 @@ test("setFlag updates icon, popup and title when the tab still matches", async f
 	assert.equal(harness.actionCalls.setTitle[0].title, "Germany");
 });
 
+test("setFlag accepts backend-provided data image icons", async function() {
+	const harness = await createHarness({
+		tabUrls: ["https://example.com/", "https://example.com/"],
+	});
+	const dataImageIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+
+	await harness.df.setFlag({
+		tab: 7,
+		url: "https://example.com/",
+		icon: dataImageIcon,
+		title: "Custom flag",
+		popup: "popup.html",
+	});
+
+	assert.equal(harness.fetchCalls.length, 1);
+	assert.equal(harness.fetchCalls[0], dataImageIcon);
+	assert.equal(harness.actionCalls.setIcon.length, 1);
+	assert.equal(harness.actionCalls.setPopup.length, 1);
+	assert.equal(harness.actionCalls.setTitle.length, 1);
+});
+
+test("setFlag blocks remote icon URLs and falls back to a safe packaged icon", async function() {
+	const harness = await createHarness({
+		tabUrls: ["https://example.com/", "https://example.com/"],
+	});
+
+	await harness.df.setFlag({
+		tab: 7,
+		url: "https://example.com/",
+		icon: "https://attacker.example/flag.svg",
+		title: "Blocked flag",
+		popup: "popup.html",
+	});
+
+	assert.equal(harness.fetchCalls.length, 1);
+	assert.equal(harness.fetchCalls[0], "images/special-flag/unknown.png");
+	assert.equal(harness.actionCalls.setIcon.length, 1);
+	assert.equal(harness.actionCalls.setPopup.length, 1);
+	assert.equal(harness.actionCalls.setTitle.length, 1);
+});
+
 test("domainCountryLookupResultData falls back to an unknown icon when flag metadata is missing", async function() {
 	const harness = await createHarness({
 		tabUrls: ["https://example.com/", "https://example.com/"],
